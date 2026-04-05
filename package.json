@@ -7,9 +7,10 @@
   },
   "dependencies": {
     "@whiskeysockets/baileys": "latest",
-    "pino": "latest",
-    "sqlite3": "latest",
+    "sqlite3": "^5.1.6",
     "sqlite": "latest",
+    "pino": "latest",
+    "@hapi/boom": "latest",
     "qrcode-terminal": "latest"
   }
 }
