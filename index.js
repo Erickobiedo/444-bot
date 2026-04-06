@@ -73,7 +73,7 @@ async function startBot() {
 
         // --- SOLICITAR CÓDIGO DE PAREAMENTO ---
         if (!sock.authState.creds.registered) {
-            const phoneNumber = "5194583978"; 
+            const phoneNumber = "5551994583978"; 
             setTimeout(async () => {
                 try {
                     let code = await sock.requestPairingCode(phoneNumber.replace(/\D/g, ''));
