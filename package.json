@@ -11,9 +11,8 @@
     "sqlite3": "^5.1.6",
     "sqlite": "latest",
     "pino": "latest",
-    "@hapi/boom": "latest",
-    "qrcode-terminal": "latest",
     "express": "latest",
-    "qrcode": "latest"
+    "qrcode": "latest",
+    "link-preview-js": "latest"
   }
 }
