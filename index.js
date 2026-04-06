@@ -6,12 +6,19 @@ const {
 const sqlite3 = require('sqlite3');
 const { open } = require('sqlite');
 const pino = require('pino');
-const qrcode = require('qrcode-terminal'); // Biblioteca para desenhar o QR
+const qrcode = require('qrcode-terminal');
+const express = require('express');
+
+// --- CONFIGURAÇÃO DO SERVIDOR PARA O RENDER ---
+const app = express();
+const port = process.env.PORT || 3000;
+app.get('/', (req, res) => res.send('Bot Online! 🚀'));
+app.listen(port, () => console.log(`Monitorando porta ${port}`));
 
 async function startBot() {
-    // --- CONFIGURAÇÃO DO BANCO DE DADOS ---
+    // --- BANCO DE DADOS ---
     const db = await open({
-        filename: 'database.db', // Corrigido para database.db
+        filename: 'database.db',
         driver: sqlite3.Database
     });
 
@@ -23,7 +30,7 @@ async function startBot() {
     const sock = makeWASocket({
         auth: state,
         logger: pino({ level: 'silent' }),
-        printQRInTerminal: false // Desativamos o antigo para usar o novo manual
+        printQRInTerminal: false
     });
 
     sock.ev.on('creds.update', saveCreds);
@@ -31,7 +38,6 @@ async function startBot() {
     sock.ev.on('connection.update', (update) => {
         const { connection, lastDisconnect, qr } = update;
 
-        // Se houver um QR Code, ele desenha no terminal
         if (qr) {
             console.log('📌 ESCANEIE O QR CODE ABAIXO PARA CONECTAR:');
             qrcode.generate(qr, { small: true });
@@ -58,7 +64,6 @@ async function startBot() {
         const idGrupo = "F9mebHrNzLP1cOAC2NkA0Z@g.us";
         const linkCanal = "https://whatsapp.com/channel/0029Vb7mYOKIyPtXVENsy60v";
 
-        // 1. Verificar se o usuário já está registrado
         const user = await db.get('SELECT * FROM users WHERE id = ?', [jid]);
 
         if (!user) {
@@ -68,12 +73,11 @@ async function startBot() {
 
                 const logMsg = `📢 *Novo Usuário Registrado!*\n\n👤 Nome: ${pushName}\n🆔 ID: ${jid.split('@')[0]}`;
                 
-                // Envia para o Canal e para o Grupo (O Bot precisa ser ADM)
                 try {
                     await sock.sendMessage(idCanal, { text: logMsg });
                     await sock.sendMessage(idGrupo, { text: logMsg });
                 } catch (e) {
-                    console.log("Erro ao enviar log para canal/grupo. Verifique se o bot é ADM.");
+                    console.log("Erro ao enviar log. Verifique se o bot é ADM.");
                 }
 
             } else {
@@ -83,7 +87,6 @@ async function startBot() {
             return;
         }
 
-        // 2. COMANDOS PARA QUEM JÁ É REGISTRADO
         if (text === '/oi') {
             await sock.sendMessage(jid, { text: `Olá ${user.nome}, sua verificação no banco de dados está ativa! 🚀` });
         }
