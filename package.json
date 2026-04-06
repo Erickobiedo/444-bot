@@ -11,6 +11,7 @@
     "sqlite": "latest",
     "pino": "latest",
     "@hapi/boom": "latest",
-    "qrcode-terminal": "latest"
+    "qrcode-terminal": "latest",
+    "express": "latest"
   }
 }
