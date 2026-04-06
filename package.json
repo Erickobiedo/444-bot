@@ -5,11 +5,15 @@
   "main": "index.js",
   "scripts": {
     "start": "node index.js"
-"dependencies": {
+  },
+  "dependencies": {
     "@whiskeysockets/baileys": "latest",
     "sqlite3": "^5.1.6",
     "sqlite": "latest",
     "pino": "latest",
+    "@hapi/boom": "latest",
+    "qrcode-terminal": "latest",
     "express": "latest",
     "qrcode": "latest"
   }
+}
