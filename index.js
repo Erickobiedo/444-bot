@@ -125,3 +125,99 @@ async function startBot() {
 }
 
 startBot();
+import baileys from '@whiskeysockets/baileys';
+const { makeWASocket, useMultiFileAuthState, DisconnectReason, fetchLatestBaileysVersion } = baileys.default ? baileys.default : baileys;
+
+import sqlite3 from 'sqlite3';
+import { open } from 'sqlite';
+import pino from 'pino';
+import express from 'express';
+import QRCode from 'qrcode';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+const app = express();
+const port = process.env.PORT || 10000;
+let qrCodeAtual = null;
+
+app.get('/', async (req, res) => {
+    if (qrCodeAtual) {
+        const qrImage = await QRCode.toDataURL(qrCodeAtual);
+        res.send(`<html><body style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;font-family:sans-serif;background:#f0f2f5;"><div style="background:white;padding:30px;border-radius:15px;text-align:center;"><h1>Escaneie o QR Code</h1><img src="${qrImage}" style="width:300px;"><p>Abra o WhatsApp e escaneie</p></div></body></html>`);
+    } else {
+        res.send('<html><body style="text-align:center;padding-top:50px;"><h1>Bot Online ou Carregando...</h1><p>Se não carregar o QR em 1 minuto, verifique os logs do Render.</p></body></html>');
+    }
+});
+
+app.listen(port, () => console.log(`🚀 Servidor Web na porta ${port}`));
+
+async function startBot() {
+    console.log("🛠️ Iniciando processo do Bot...");
+    try {
+        // Caminho absoluto para o banco
+        const db = await open({ 
+            filename: path.join(__dirname, 'database.db'), 
+            driver: sqlite3.Database 
+        });
+        await db.exec(`CREATE TABLE IF NOT EXISTS users (id TEXT PRIMARY KEY, nome TEXT)`);
+        console.log("📂 Banco de dados pronto.");
+
+        // Caminho absoluto para a autenticação
+        const { state, saveCreds } = await useMultiFileAuthState(path.join(__dirname, 'auth_info'));
+        const { version } = await fetchLatestBaileysVersion();
+        
+        console.log("🌐 Conectando ao WhatsApp...");
+        const sock = makeWASocket({
+            version,
+            auth: state,
+            logger: pino({ level: 'silent' }),
+            printQRInTerminal: true // Vamos ativar no terminal também por segurança
+        });
+
+        sock.ev.on('creds.update', saveCreds);
+
+        sock.ev.on('connection.update', (update) => {
+            const { connection, lastDisconnect, qr } = update;
+            if (qr) {
+                qrCodeAtual = qr;
+                console.log('📌 NOVO QR CODE GERADO!');
+            }
+            if (connection === 'close') {
+                qrCodeAtual = null;
+                const statusCode = lastDisconnect?.error?.output?.statusCode;
+                console.log(`❌ Conexão fechada: ${statusCode}`);
+                if (statusCode !== DisconnectReason.loggedOut) startBot();
+            } else if (connection === 'open') {
+                qrCodeAtual = null;
+                console.log('✅ BOT CONECTADO!');
+            }
+        });
+
+        // Seu código de mensagens...
+        sock.ev.on('messages.upsert', async ({ messages }) => {
+            const msg = messages[0];
+            if (!msg.message || msg.key.fromMe) return;
+            const jid = msg.key.remoteJid;
+            const pushName = msg.pushName || "Usuário";
+            const text = msg.message.conversation || msg.message.extendedTextMessage?.text || "";
+            
+            const user = await db.get('SELECT * FROM users WHERE id = ?', [jid]);
+            if (!user) {
+                if (text.startsWith('/registrar')) {
+                    await db.run('INSERT INTO users (id, nome) VALUES (?, ?)', [jid, pushName]);
+                    await sock.sendMessage(jid, { text: `✅ Registrado, ${pushName}!` });
+                }
+                return;
+            }
+            if (text === '/oi') await sock.sendMessage(jid, { text: `Olá ${user.nome}!` });
+        });
+
+    } catch (err) {
+        console.error("💥 ERRO FATAL NO BOT:", err);
+    }
+}
+
+startBot();
