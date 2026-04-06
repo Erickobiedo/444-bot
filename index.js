@@ -1,15 +1,13 @@
-const { 
-    default: makeWASocket, 
-    useMultiFileAuthState, 
-    DisconnectReason 
-} = require('@whiskeysockets/baileys');
-const sqlite3 = require('sqlite3');
-const { open } = require('sqlite');
-const pino = require('pino');
-const qrcode = require('qrcode-terminal');
-const express = require('express');
+import baileys from '@whiskeysockets/baileys';
+const { default: makeWASocket, useMultiFileAuthState, DisconnectReason } = baileys;
 
-// --- CONFIGURAÇÃO DO SERVIDOR PARA O RENDER ---
+import sqlite3 from 'sqlite3';
+import { open } from 'sqlite';
+import pino from 'pino';
+import qrcode from 'qrcode-terminal';
+import express from 'express';
+
+// --- CONFIGURAÇÃO DO SERVIDOR ---
 const app = express();
 const port = process.env.PORT || 3000;
 app.get('/', (req, res) => res.send('Bot Online! 🚀'));
@@ -39,16 +37,15 @@ async function startBot() {
         const { connection, lastDisconnect, qr } = update;
 
         if (qr) {
-            console.log('📌 ESCANEIE O QR CODE ABAIXO PARA CONECTAR:');
+            console.log('📌 ESCANEIE O QR CODE ABAIXO:');
             qrcode.generate(qr, { small: true });
         }
 
         if (connection === 'close') {
             const shouldReconnect = lastDisconnect.error?.output?.statusCode !== DisconnectReason.loggedOut;
-            console.log('Conexão fechada. Reconectando:', shouldReconnect);
             if (shouldReconnect) startBot();
         } else if (connection === 'open') {
-            console.log('✅ Bot conectado e monitorando registros!');
+            console.log('✅ Bot conectado!');
         }
     });
 
@@ -71,24 +68,22 @@ async function startBot() {
                 await db.run('INSERT INTO users (id, nome) VALUES (?, ?)', [jid, pushName]);
                 await sock.sendMessage(jid, { text: `✅ Registro concluído, ${pushName}!` });
 
-                const logMsg = `📢 *Novo Usuário Registrado!*\n\n👤 Nome: ${pushName}\n🆔 ID: ${jid.split('@')[0]}`;
+                const logMsg = `📢 *Novo Usuário!*\n👤 Nome: ${pushName}\n🆔 ID: ${jid.split('@')[0]}`;
                 
                 try {
                     await sock.sendMessage(idCanal, { text: logMsg });
                     await sock.sendMessage(idGrupo, { text: logMsg });
-                } catch (e) {
-                    console.log("Erro ao enviar log. Verifique se o bot é ADM.");
-                }
+                } catch (e) { console.log("Erro ao enviar log."); }
 
             } else {
-                const mensagemRegistro = `Olá! Você ainda não está registrado.\n\nUse o comando */registrar* para eu lhe responder.\n\n🔗 *Siga nosso canal:* ${linkCanal}`;
-                await sock.sendMessage(jid, { text: mensagemRegistro });
+                const msgReg = `Olá! Você não está registrado.\nUse */registrar*.\n🔗 Canal: ${linkCanal}`;
+                await sock.sendMessage(jid, { text: msgReg });
             }
             return;
         }
 
         if (text === '/oi') {
-            await sock.sendMessage(jid, { text: `Olá ${user.nome}, sua verificação no banco de dados está ativa! 🚀` });
+            await sock.sendMessage(jid, { text: `Olá ${user.nome}, banco de dados ativo! 🚀` });
         }
     });
 }
